@@ -16,6 +16,7 @@ class MuscleImageController {
         "calfs",
         "chest",
         "core",
+        "core_side",
         "core_lower",
         "core_upper",
         "forearms",
