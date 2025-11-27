@@ -42,7 +42,7 @@ class Router{
           $queries = array();
           parse_str($_SERVER['QUERY_STRING'], $queries);
           $queryValues = array_map(function($queryParameterName) use ($queries) {
-              return urldecode($queries[$queryParameterName]);
+              return isset($queries[$queryParameterName]) ? urldecode($queries[$queryParameterName]) : null;
           }, array_keys($queryParameters));
 
           // Combine both value arrays in the correct order

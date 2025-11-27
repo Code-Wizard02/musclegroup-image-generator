@@ -41,6 +41,38 @@ class MuscleImageController {
         echo json_encode(MuscleImageController::$availableMuscleGroups, JSON_PRETTY_PRINT);
     }
 
+    /**
+     * Get the correct image path based on view parameter
+     * @param string $view - 'front', 'back', or 'both'
+     * @param string $imageName - name of the image file (without path)
+     * @return string - full path to the image
+     */
+    private static function getImagePath($view, $imageName) {
+        $validViews = ['front', 'back', 'both'];
+        if (!in_array($view, $validViews)) {
+            $view = 'both'; // default to both if invalid
+        }
+
+        if ($view === 'both') {
+            return './resources/images/' . $imageName;
+        } else {
+            return './resources/images_split/' . $view . '/' . $imageName;
+        }
+    }
+
+    /**
+     * Get image dimensions based on view
+     * @param string $view - 'front', 'back', or 'both'
+     * @return array - [width, height]
+     */
+    private static function getImageDimensions($view) {
+        if ($view === 'both') {
+            return [1920, 1920];
+        } else {
+            return [960, 1920];
+        }
+    }
+
     public static function testCreateImage() {
 
         header('Content-Type: plain/text');
@@ -54,30 +86,34 @@ class MuscleImageController {
         imagedestroy($im);
     }
 
-    public static function getBaseImage($transparentBackground) {
+    public static function getBaseImage($transparentBackground, $view = 'both') {
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        if ($transparentBackground == null || $transparentBackground == 0) {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage.png');
-        } else {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage_transparent.png');
-        }
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+            ? 'baseImage.png' 
+            : 'baseImage_transparent.png';
+
+        $imagePath = self::getImagePath($view, $imageFile);
+        $baseImage = imagecreatefrompng($imagePath);
 
         imagepng($baseImage);
         imagedestroy($baseImage);
     }
 
-    public static function getMuscleImage($muscleGroupsQuery, $transparentBackground) {
+    public static function getMuscleImage($muscleGroupsQuery, $transparentBackground, $view = 'both') {
 
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        if ($transparentBackground == null || $transparentBackground == 0) {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage.png');
-        } else {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage_transparent.png');
-        }
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+            ? 'baseImage.png' 
+            : 'baseImage_transparent.png';
+
+        $imagePath = self::getImagePath($view, $imageFile);
+        $baseImage = imagecreatefrompng($imagePath);
+
+        list($width, $height) = self::getImageDimensions($view);
 
         $muscleGroups = explode(",", $muscleGroupsQuery);
         foreach ($muscleGroups as $muscleGroup) {
@@ -87,12 +123,13 @@ class MuscleImageController {
                 exit;
             }
 
-            $muscleGroupImage = imagecreatefrompng('./resources/images/' . $muscleGroup . '.png');
+            $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+            $muscleGroupImage = imagecreatefrompng($muscleImagePath);
 
             imagealphablending($baseImage, false);
             imagesavealpha($baseImage, true);
 
-            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, 1920, 1920, 100);
+            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
             imagedestroy($muscleGroupImage);
         }
 
@@ -100,16 +137,19 @@ class MuscleImageController {
         imagedestroy($baseImage);
     }
 
-    public static function getMuscleImageWithCustomColor($muscleGroupsQuery, $colorQuery, $transparentBackground) {
+    public static function getMuscleImageWithCustomColor($muscleGroupsQuery, $colorQuery, $transparentBackground, $view = 'both') {
 
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        if ($transparentBackground == null || $transparentBackground == 0) {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage.png');
-        } else {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage_transparent.png');
-        }
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+            ? 'baseImage.png' 
+            : 'baseImage_transparent.png';
+
+        $imagePath = self::getImagePath($view, $imageFile);
+        $baseImage = imagecreatefrompng($imagePath);
+
+        list($width, $height) = self::getImageDimensions($view);
 
         // Support both HEX and RGB formats
         if (strpos($colorQuery, ',') !== false) {
@@ -134,7 +174,8 @@ class MuscleImageController {
                 exit;
             }
 
-            $muscleGroupImage = imagecreatefrompng('./resources/images/' . $muscleGroup . '.png');
+            $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+            $muscleGroupImage = imagecreatefrompng($muscleImagePath);
 
             $index = imagecolorexact($muscleGroupImage,89,136,255);
             imagecolorset($muscleGroupImage, $index, $red, $green, $blue);
@@ -142,7 +183,7 @@ class MuscleImageController {
             imagealphablending($baseImage, false);
             imagesavealpha($baseImage, true);
 
-            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, 1920, 1920, 100);
+            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
             imagedestroy($muscleGroupImage);
         }
 
@@ -150,16 +191,19 @@ class MuscleImageController {
         imagedestroy($baseImage);
     }
 
-    public static function getMuscleImageWithMultiColor($primaryMuscleGroupsQuery, $secondaryMuscleGroupsQuery, $primaryColorQuery, $secondaryColorQuery, $transparentBackground) {
+    public static function getMuscleImageWithMultiColor($primaryMuscleGroupsQuery, $secondaryMuscleGroupsQuery, $primaryColorQuery, $secondaryColorQuery, $transparentBackground, $view = 'both') {
 
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        if ($transparentBackground == null || $transparentBackground == 0) {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage.png');
-        } else {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage_transparent.png');
-        }
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+            ? 'baseImage.png' 
+            : 'baseImage_transparent.png';
+
+        $imagePath = self::getImagePath($view, $imageFile);
+        $baseImage = imagecreatefrompng($imagePath);
+
+        list($width, $height) = self::getImageDimensions($view);
 
         // Support both HEX and RGB formats for primary color
         if (strpos($primaryColorQuery, ',') !== false) {
@@ -200,7 +244,8 @@ class MuscleImageController {
                 exit;
             }
 
-            $muscleGroupImage = imagecreatefrompng('./resources/images/' . $muscleGroup . '.png');
+            $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+            $muscleGroupImage = imagecreatefrompng($muscleImagePath);
 
             $index = imagecolorexact($muscleGroupImage,89,136,255);
             imagecolorset($muscleGroupImage, $index, $primaryRed, $primaryGreen, $primaryBlue);
@@ -208,7 +253,7 @@ class MuscleImageController {
             imagealphablending($baseImage, false);
             imagesavealpha($baseImage, true);
 
-            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, 1920, 1920, 100);
+            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
             imagedestroy($muscleGroupImage);
         }
 
@@ -220,7 +265,8 @@ class MuscleImageController {
                 exit;
             }
 
-            $muscleGroupImage = imagecreatefrompng('./resources/images/' . $muscleGroup . '.png');
+            $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+            $muscleGroupImage = imagecreatefrompng($muscleImagePath);
 
             $index = imagecolorexact($muscleGroupImage,89,136,255);
             imagecolorset($muscleGroupImage, $index, $secondaryRed, $secondaryGreen, $secondaryBlue);
@@ -228,7 +274,7 @@ class MuscleImageController {
             imagealphablending($baseImage, false);
             imagesavealpha($baseImage, true);
 
-            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, 1920, 1920, 100);
+            imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
             imagedestroy($muscleGroupImage);
         }
 
@@ -236,16 +282,19 @@ class MuscleImageController {
         imagedestroy($baseImage);
     }
 
-    public static function getIndividualColorImage($muscleGroups, $colors, $transparentBackground) {
+    public static function getIndividualColorImage($muscleGroups, $colors, $transparentBackground, $view = 'both') {
 
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        if ($transparentBackground == null || $transparentBackground == 0) {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage.png');
-        } else {
-            $baseImage = imagecreatefrompng('./resources/images/baseImage_transparent.png');
-        }
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+            ? 'baseImage.png' 
+            : 'baseImage_transparent.png';
+
+        $imagePath = self::getImagePath($view, $imageFile);
+        $baseImage = imagecreatefrompng($imagePath);
+
+        list($width, $height) = self::getImageDimensions($view);
 
         $colorsArray = explode(",", $colors);
         $muscleGroupsArray = explode(",", $muscleGroups);
@@ -259,7 +308,8 @@ class MuscleImageController {
                     exit;
                 }
 
-                $muscleGroupImage = imagecreatefrompng('./resources/images/' . $muscleGroup . '.png');
+                $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+                $muscleGroupImage = imagecreatefrompng($muscleImagePath);
 
                 $index = imagecolorexact($muscleGroupImage, 89, 136, 255);
                 $rgbColor = self::hex2RGB($colorsArray[$counter]);
@@ -271,7 +321,7 @@ class MuscleImageController {
                 imagealphablending($baseImage, false);
                 imagesavealpha($baseImage, true);
 
-                imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, 1920, 1920, 100);
+                imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
                 imagedestroy($muscleGroupImage);
             }
         }
