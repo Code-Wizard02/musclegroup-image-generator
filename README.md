@@ -8,7 +8,19 @@ Generates an anatomical image where the requested muscle groups are highlighted 
 
 This documentation provides an overview of all available endpoints in the Muscle Group Image Generator API. Each endpoint returns an image or an appropriate error message in JSON format.
 
-## ⚠️ Recent Changes
+## Recent Changes
+
+### **November 2025 - New Interactive Endpoints**
+
+**New Endpoints Added:**
+- `/getMuscleLayer` - Get individual muscle layer images for frontend overlays
+- `/getMuscleLayersInfo` - Get JSON with URLs of all available muscle layers
+
+These endpoints enable interactive muscle selection with hover/click functionality in web applications.
+
+---
+
+### **Previous Update - View Parameter**
 
 **New Parameter Added: `view`**
 
@@ -20,6 +32,7 @@ All image endpoints now support an optional `view` parameter that allows you to 
 **Backward Compatibility:** All existing API calls continue to work without modification. If you don't specify the `view` parameter, the API will default to `both` (the previous behavior).
 
 ![New Example image](./exampleV2.png)
+
 ## Overview
 
 - [GET /getMuscleGroups](#get-getmusclegroups)
@@ -27,6 +40,8 @@ All image endpoints now support an optional `view` parameter that allows you to 
 - [GET /getImage](#get-getimage)
 - [GET /getMulticolorImage](#get-getmulticolorimage)
 - [GET /getIndividualColorImage](#get-getindividualcolorimage)
+- [GET /getMuscleLayer](#get-getmusclelayer) **New**
+- [GET /getMuscleLayersInfo](#get-getmusclelayersinfo) **New**
 
 ---
 
@@ -135,4 +150,78 @@ This endpoint allows you to assign individual colors for each muscle group. Both
 ```bash
 curl -X GET "http://localhost/getIndividualColorImage?muscleGroups=biceps,triceps&colors=FF0000,00FF00&transparentBackground=1&view=front"
 ```
+
+---
+
+## GET /getMuscleLayer
+
+**New - Added November 2025**
+
+This endpoint returns an individual muscle layer image without the base body image. Perfect for creating interactive muscle selectors where users can click or hover over specific muscles in the frontend.
+
+### Query Parameters
+- `muscleGroup` (**required**): A single muscle group name (e.g., `biceps`, `chest`, `quadriceps`).
+- `color` (optional): Custom color for the muscle in hex format (e.g., `FF0000`). If not specified, the default blue color is used.
+- `view` (optional, default `both`): Specifies which view to return. Valid values are `front`, `back`, or `both`.
+
+### Use Case
+These images are designed to be overlaid on top of the base image in your frontend application. Each muscle layer is a PNG with transparency, allowing you to:
+- Create clickable muscle regions
+- Show hover effects on specific muscles
+- Build interactive anatomy diagrams
+- Display muscle activation in real-time
+
+### Possible Calls
+- `/getMuscleLayer?muscleGroup=MUSCLE_NAME`
+- `/getMuscleLayer?muscleGroup=MUSCLE_NAME&color=FF0000`
+- `/getMuscleLayer?muscleGroup=MUSCLE_NAME&color=FF0000&view=front`
+
+### Example
+```bash
+curl -X GET "http://localhost/getMuscleLayer?muscleGroup=biceps&color=FF0000&view=front"
+```
+
+---
+
+## GET /getMuscleLayersInfo
+
+**New - Added November 2025**
+
+This endpoint returns a JSON object containing URLs for all available muscle layers. This is useful for dynamically loading all muscle layers in a web application without hardcoding muscle names.
+
+### Query Parameters
+- `view` (optional, default `both`): Specifies which view to return URLs for. Valid values are `front`, `back`, or `both`.
+- `color` (optional): Optional default color to apply to all muscle layer URLs (in hex format).
+
+### Response Format
+```json
+{
+  "view": "front",
+  "baseImage": "/getBaseImage?view=front",
+  "totalMuscles": 28,
+  "muscles": [
+    {
+      "name": "biceps",
+      "url": "/getMuscleLayer?muscleGroup=biceps&view=front"
+    },
+    {
+      "name": "triceps",
+      "url": "/getMuscleLayer?muscleGroup=triceps&view=front"
+    }
+    // ... more muscles
+  ]
+}
+```
+
+### Possible Calls
+- `/getMuscleLayersInfo`
+- `/getMuscleLayersInfo?view=front`
+- `/getMuscleLayersInfo?view=front&color=FF0000`
+
+### Example
+```bash
+curl -X GET "http://localhost/getMuscleLayersInfo?view=front"
+```
+
+---
 
