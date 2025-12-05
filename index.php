@@ -75,6 +75,35 @@ Router::createRouteWithQueryParameters('get', '/getIndividualColorImage', array(
     }
 });
 
+Router::createRouteWithQueryParameters('get', '/getMuscleLayer', array(
+    'muscleGroup' => Router::$PARAMETER_TYPE['string'],
+    'color' => Router::$PARAMETER_TYPE['string'],
+    'view' => Router::$PARAMETER_TYPE['string']
+), function ($muscleGroup, $color, $view) {
+    if ($muscleGroup == null) {
+        http_response_code(400);
+        exit;
+    }
+    $view = $view ?? 'both';
+    MuscleImageController::getMuscleLayer($muscleGroup, $color, $view);
+});
+
+Router::createRoute('get', '/getMuscleLayersInfo', function() {
+    MuscleImageController::getMuscleLayersInfo('both', null);
+});
+
+Router::createRoute('get', '/getMuscleLayersInfo?', function() {
+    MuscleImageController::getMuscleLayersInfo('both', null);
+});
+
+Router::createRouteWithQueryParameters('get', '/getMuscleLayersInfo', array(
+    'view' => Router::$PARAMETER_TYPE['string'],
+    'color' => Router::$PARAMETER_TYPE['string']
+), function ($view, $color) {
+    $view = $view ?? 'both';
+    MuscleImageController::getMuscleLayersInfo($view, $color);
+});
+
 Router::createRoute('get', '/', function() {
     echo "Welcome to the muscle group image generator api.";
 });
