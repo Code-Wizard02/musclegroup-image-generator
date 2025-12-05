@@ -287,12 +287,16 @@ class MuscleImageController {
         header('Content-Type: image/png');
         header("Access-Control-Allow-Origin: *");
 
-        $imageFile = ($transparentBackground == null || $transparentBackground == 0) 
+        $imageFile = ($transparentBackground == null || $transparentBackground == 0 || $transparentBackground === '0') 
             ? 'baseImage.png' 
             : 'baseImage_transparent.png';
 
         $imagePath = self::getImagePath($view, $imageFile);
         $baseImage = imagecreatefrompng($imagePath);
+
+        // Preserve transparency
+        imagealphablending($baseImage, false);
+        imagesavealpha($baseImage, true);
 
         list($width, $height) = self::getImageDimensions($view);
 
@@ -318,9 +322,6 @@ class MuscleImageController {
                 }
                 imagecolorset($muscleGroupImage, $index, $rgbColor["red"], $rgbColor["green"], $rgbColor["blue"]);
 
-                imagealphablending($baseImage, false);
-                imagesavealpha($baseImage, true);
-
                 imagecopymerge($baseImage, $muscleGroupImage, 0, 0, 0, 0, $width, $height, 100);
                 imagedestroy($muscleGroupImage);
             }
@@ -328,6 +329,104 @@ class MuscleImageController {
 
         imagepng($baseImage);
         imagedestroy($baseImage);
+    }
+
+    /**
+     * Get individual muscle layer image without base
+     * Perfect for frontend overlays with hover/click interactions
+     * 
+     * @param string $muscleGroup - The muscle group to retrieve
+     * @param string|null $colorQuery - Optional custom color (HEX or RGB format)
+     * @param string $view - 'front', 'back', or 'both'
+     */
+    public static function getMuscleLayer($muscleGroup, $colorQuery, $view = 'both') {
+
+        header('Content-Type: image/png');
+        header("Access-Control-Allow-Origin: *");
+
+        // Validate muscle group
+        if (!in_array($muscleGroup, MuscleImageController::$availableMuscleGroups)) {
+            http_response_code(400);
+            exit;
+        }
+
+        // Get the muscle image
+        $muscleImagePath = self::getImagePath($view, $muscleGroup . '.png');
+        $muscleGroupImage = imagecreatefrompng($muscleImagePath);
+
+        // If custom color is provided, apply it
+        if ($colorQuery != null && $colorQuery != '') {
+            // Support both HEX and RGB formats
+            if (strpos($colorQuery, ',') !== false) {
+                // RGB format: "255,0,0"
+                $colorRgb = explode(",", $colorQuery);
+                $red = $colorRgb[0];
+                $green = $colorRgb[1];
+                $blue = $colorRgb[2];
+            } else {
+                // HEX format: "#FF0000" or "FF0000"
+                $rgbColor = self::hex2RGB($colorQuery);
+                $red = $rgbColor["red"];
+                $green = $rgbColor["green"];
+                $blue = $rgbColor["blue"];
+            }
+
+            // Replace the default blue color with custom color
+            $index = imagecolorexact($muscleGroupImage, 89, 136, 255);
+            imagecolorset($muscleGroupImage, $index, $red, $green, $blue);
+        }
+
+        // Preserve transparency
+        imagealphablending($muscleGroupImage, false);
+        imagesavealpha($muscleGroupImage, true);
+
+        // Output the image
+        imagepng($muscleGroupImage);
+        imagedestroy($muscleGroupImage);
+    }
+
+    /**
+     * Get information about all available muscle layers
+     * Returns JSON with base image URL and all muscle layer URLs
+     * 
+     * @param string $view - 'front', 'back', or 'both'
+     * @param string|null $color - Optional default color for all muscles
+     */
+    public static function getMuscleLayersInfo($view = 'both', $color = null) {
+
+        header('Content-Type: application/json');
+        header("Access-Control-Allow-Origin: *");
+
+        $view = $view ?? 'both';
+        
+        // Build base image URL
+        $baseImageUrl = "/getBaseImage?view=" . urlencode($view);
+        
+        // Build muscle layer URLs
+        $muscles = array();
+        foreach (self::$availableMuscleGroups as $muscleGroup) {
+            $muscleUrl = "/getMuscleLayer?muscleGroup=" . urlencode($muscleGroup) . "&view=" . urlencode($view);
+            
+            // Add color parameter if provided
+            if ($color != null && $color != '') {
+                $muscleUrl .= "&color=" . urlencode($color);
+            }
+            
+            $muscles[] = array(
+                "name" => $muscleGroup,
+                "url" => $muscleUrl
+            );
+        }
+        
+        // Build response
+        $response = array(
+            "view" => $view,
+            "baseImage" => $baseImageUrl,
+            "totalMuscles" => count($muscles),
+            "muscles" => $muscles
+        );
+        
+        echo json_encode($response, JSON_PRETTY_PRINT);
     }
 
     /**
